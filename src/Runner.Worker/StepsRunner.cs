@@ -70,7 +70,8 @@ namespace GitHub.Runner.Worker
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
-                ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
+                ArgUtil.NotNull(step.ExecutionContext.Global, nameof(step.ExecutionContext.Global));
+                ArgUtil.NotNull(step.ExecutionContext.Global.Variables, nameof(step.ExecutionContext.Global.Variables));
 
                 // Start
                 step.ExecutionContext.Start();
@@ -82,7 +83,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
-                step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.StepsContext.GetScope(step.ExecutionContext.ScopeName);
+                step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
 
                 // Populate env context for each step
                 Trace.Info("Initialize Env context for step");
@@ -93,23 +94,9 @@ namespace GitHub.Runner.Worker
 #endif
 
                 // Global env
-                foreach (var pair in step.ExecutionContext.EnvironmentVariables)
+                foreach (var pair in step.ExecutionContext.Global.EnvironmentVariables)
                 {
                     envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-                }
-
-                // Stomps over with outside step env
-                if (step.ExecutionContext.ExpressionValues.TryGetValue("env", out var envContextData))
-                {
-#if OS_WINDOWS
-                    var dict = envContextData as DictionaryContextData;
-#else
-                    var dict = envContextData as CaseSensitiveDictionaryContextData;
-#endif
-                    foreach (var pair in dict)
-                    {
-                        envContext[pair.Key] = pair.Value;
-                    }
                 }
 
                 step.ExecutionContext.ExpressionValues["env"] = envContext;
@@ -118,7 +105,16 @@ namespace GitHub.Runner.Worker
                 if (step is IActionRunner actionStep)
                 {
                     // Set GITHUB_ACTION
-                    step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                    // Warning: Do not turn on FF DistributedTask.UseContextNameForGITHUBACTION until after M271-ish. After M271-ish
+                    // the server will never send an empty context name. Generated context names start with "__"
+                    if (step.ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseContextNameForGITHUBACTION") ?? false)
+                    {
+                        step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                    }
+                    else
+                    {
+                        step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.GetFullyQualifiedContextName());
+                    }
 
                     try
                     {
@@ -300,40 +296,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.SetTimeout(timeout);
             }
 
-#if OS_WINDOWS
-            try
-            {
-                if (Console.InputEncoding.CodePage != 65001)
-                {
-                    using (var p = HostContext.CreateService<IProcessInvoker>())
-                    {
-                        // Use UTF8 code page
-                        int exitCode = await p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                                                fileName: WhichUtil.Which("chcp", true, Trace),
-                                                arguments: "65001",
-                                                environment: null,
-                                                requireExitCodeZero: false,
-                                                outputEncoding: null,
-                                                killProcessOnCancel: false,
-                                                redirectStandardIn: null,
-                                                inheritConsoleHandler: true,
-                                                cancellationToken: step.ExecutionContext.CancellationToken);
-                        if (exitCode == 0)
-                        {
-                            Trace.Info("Successfully returned to code page 65001 (UTF8)");
-                        }
-                        else
-                        {
-                            Trace.Warning($"'chcp 65001' failed with exit code {exitCode}");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.Warning($"'chcp 65001' failed with exception {ex.Message}");
-            }
-#endif
+            await EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
             try
             {
