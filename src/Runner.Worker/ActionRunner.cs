@@ -136,12 +136,12 @@ namespace GitHub.Runner.Worker
             }
 
             // Setup container stephost for running inside the container.
-            if (ExecutionContext.Container != null)
+            if (ExecutionContext.Global.Container != null)
             {
                 // Make sure required container is already created.
-                ArgUtil.NotNullOrEmpty(ExecutionContext.Container.ContainerId, nameof(ExecutionContext.Container.ContainerId));
+                ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
                 var containerStepHost = HostContext.CreateService<IContainerStepHost>();
-                containerStepHost.Container = ExecutionContext.Container;
+                containerStepHost.Container = ExecutionContext.Global.Container;
                 stepHost = containerStepHost;
             }
 
@@ -169,6 +169,25 @@ namespace GitHub.Runner.Worker
                 validInputs.Add("entryPoint");
                 validInputs.Add("args");
             }
+
+            Trace.Info($"Repo: {ExecutionContext.GetGitHubContext("repository")}");
+
+            // Since we don't pass the GitHub Context attributes to the composite action,
+            // We need to explitly set the default values of certain things we need like the 
+            // default repository 
+
+            // if (ExecutionContext.GetGitHubContext("repository") == null)
+            // {
+            //     ExecutionContext.SetGitHubContext("repository", definition.Directory);
+            // }
+
+            // var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
+
+            // foreach (var pair in githubContext)
+            // {
+            //     ExecutionContext.SetGitHubContext(pair.Key, pair.Value as StringContextData);
+            // }
+            
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
@@ -179,7 +198,17 @@ namespace GitHub.Runner.Worker
                     validInputs.Add(key);
                     if (!inputs.ContainsKey(key))
                     {
+                        Trace.Info($"Definition Input Key: {key}");
+                        // if (ExecutionContext.InsideComposite)
+                        // {
+                        //     inputs[key] = manifestManager.EvaluateDefaultInputInsideComposite(ExecutionContext, key, input.Value);
+                        // }
+                        // else
+                        // {
+                        //     inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
+                        // }
                         inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
+                        Trace.Info($"Definition Input Value: {inputs[key]}");
                     }
                 }
             }
@@ -231,7 +260,7 @@ namespace GitHub.Runner.Worker
                             handlerData,
                             inputs,
                             environment,
-                            ExecutionContext.Variables,
+                            ExecutionContext.Global.Variables,
                             actionDirectory: definition.Directory);
 
             // Print out action details
