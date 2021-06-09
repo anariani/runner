@@ -1,18 +1,11 @@
 ## Features
-  - Resolve action download info from server (#508, #515, #550)
-  - Print runner and machine name to log. (#539)
+
+
 ## Bugs
-  - Reduce input validation warnings (#506) 
-  - Fix null ref exception in SecretMasker caused by `hashfiles` timeout. (#516)
-  - Add libicu66 to `./installDependencies.sh` for Ubuntu 20.04 (#535)
-  - Fix DataContract with Token service (#532)
-  - Skip search $PATH on command with fully qualified path (#526)
-  - Restore SELinux context on service file when SELinux is enabled (#525)
+  - Fixed an issue where docker containers failed to initialize (#977)
+
 ## Misc
-  - Remove SPS/Token migration code. Remove GHES url manipulate code. (#513) 
-  - Add sub-step for developer flow for clarity (#523)
-  - Update Links and Language to Git + VSCode (#522)
-  - Update runner configuration exception message (#540)
+
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
@@ -74,3 +67,13 @@ tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 
 ## Using your self hosted runner
 For additional details about configuring, running, or shutting down the runner please check out our [product docs.](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners)
+
+## SHA-256 Checksums
+
+The SHA-256 checksums for the packages included in this build are shown below:
+
+- actions-runner-win-x64-<RUNNER_VERSION>.zip <!-- BEGIN SHA win-x64 --><WIN_X64_SHA><!-- END SHA win-x64 -->
+- actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA osx-x64 --><OSX_X64_SHA><!-- END SHA osx-x64 -->
+- actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-x64 --><LINUX_X64_SHA><!-- END SHA linux-x64 -->
+- actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-arm64 --><LINUX_ARM64_SHA><!-- END SHA linux-arm64 -->
+- actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-arm --><LINUX_ARM_SHA><!-- END SHA linux-arm -->
